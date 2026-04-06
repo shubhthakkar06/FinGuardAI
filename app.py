@@ -43,10 +43,49 @@ def admin_dashboard():
     total_tx = len(transactions)
     flagged = sum(1 for tx in transactions if tx.get('prediction', {}).get('is_fraud'))
     
+    # Calculate aggregate SHAP (Feature Importance)
+    shap_aggregate = {}
+    for tx in transactions:
+        for val in tx.get('prediction', {}).get('ensemble_shap_values', []):
+            f = val['feature']
+            shap_aggregate[f] = shap_aggregate.get(f, 0) + val['importance']
+    
+    # Sort and take top items
+    sorted_shap = sorted(shap_aggregate.items(), key=lambda x: x[1], reverse=True)
+    total_importance = sum(abs(v) for k, v in sorted_shap) or 1
+    
+    # Format for chart (labels and data)
+    shap_labels = [k for k, v in sorted_shap]
+    shap_data = [round(v / total_importance * 100, 2) for k, v in sorted_shap]
+    
+    # Format for timeline chart (last 20 transactions)
+    timeline_tx = transactions[-20:]
+    timeline_labels = [tx['transaction_id'] for tx in timeline_tx]
+    timeline_data = [tx['prediction']['probability'] for tx in timeline_tx]
+    
     return render_template('admin.html', 
                            total_tx=total_tx, 
                            flagged=flagged,
-                           recent_transactions=list(reversed(transactions))[-10:])
+                           recent_transactions=list(reversed(transactions))[-10:],
+                           shap_labels=shap_labels,
+                           shap_data=shap_data,
+                           timeline_labels=timeline_labels,
+                           timeline_data=timeline_data)
+
+@app.route('/api/admin/feature_importance')
+def feature_importance():
+    """Returns global feature importance for AJAX updates if needed."""
+    shap_aggregate = {}
+    for tx in transactions:
+        for val in tx.get('prediction', {}).get('ensemble_shap_values', []):
+            f = val['feature']
+            shap_aggregate[f] = shap_aggregate.get(f, 0) + val['importance']
+    
+    sorted_shap = sorted(shap_aggregate.items(), key=lambda x: x[1], reverse=True)
+    return jsonify({
+        "labels": [k for k, v in sorted_shap],
+        "values": [round(v, 2) for k, v in sorted_shap]
+    })
 
 @app.route('/api/transaction', methods=['POST'])
 def handle_transaction():
@@ -68,7 +107,7 @@ def handle_transaction():
     response_data = {
         "transaction_id": tx_id,
         "amount": data.get("amount"),
-        "recipient": data.get("recipient"),
+        "recipient": data.get("nameDest", "Unknown"),
         "prediction": prediction,
         "explanation": explanation
     }

@@ -1,3 +1,10 @@
 Flask
 python-dotenv
 requests
+pandas
+numpy
+scikit-learn
+torch
+tensorflow
+shap
+joblib

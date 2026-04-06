@@ -3,9 +3,46 @@
 {% block title %}FinGuard AI - Admin Login{% endblock %}
 
 {% block content %}
-<div class="two-column-layout" style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
-    <div class="panel glass-panel input-panel" style="max-width: 500px; width: 100%;">
-        <h2 style="text-align: center;">Admin Dashboard Login</h2>
+<div class="two-column-layout"
+    style="display: flex; gap: 40px; justify-content: center; align-items: stretch; min-height: 80vh; padding: 40px 0;">
+    <!-- Left Column: Info Panel -->
+    <div class="info-panel"
+        style="flex: 1; max-width: 600px; display: flex; flex-direction: column; justify-content: center;">
+        <h1
+            style="font-size: 2.5rem; margin-bottom: 20px; background: linear-gradient(90deg, var(--primary), var(--accent)); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+            FinGuard AI Project</h1>
+        <p style="font-size: 1.1rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px;">
+            FinGuard AI is a state-of-the-art anomaly and fraud detection system designed to monitor, track, and protect
+            financial transactions in real-time. By leveraging a robust ensemble of cutting-edge Multi-Model Machine
+            Learning algorithms, it delivers high-accuracy insights and explainable AI capabilities natively.
+        </p>
+        <div class="glass-panel"
+            style="background: rgba(13, 162, 189, 0.1); border-left: 4px solid var(--primary); padding: 20px; margin-bottom: 20px;">
+            <h3 style="margin-bottom: 15px; color: #fff;">Our 4 Core AI Models</h3>
+            <ul style="color: var(--text-muted); line-height: 1.6; padding-left: 20px; font-size: 0.95rem;">
+                <li style="margin-bottom: 10px;"><strong>LSTM + RF:</strong> An optimized hybrid model combining Long
+                    Short-Term Memory networks for processing sequential transaction telemetry, alongside Random Forest
+                    to form an unyielding decision baseline.</li>
+                <li style="margin-bottom: 10px;"><strong>CNN + BiLSTM:</strong> Identifies spatial and relational
+                    feature patterns locally via Convolutions, and outsmarts complex time-series behavior using
+                    Bidirectional LSTM.</li>
+                <li style="margin-bottom: 10px;"><strong>TCN + BiLSTM + Multihead Attention:</strong> A PyTorch-based
+                    powerhouse combining Temporal Convolutions, BiLSTMs, and Multihead Attention mechanisms for top-tier
+                    anomaly isolation.</li>
+                <li><strong>TCN:</strong> Applies highly tailored temporal filtering capabilities with dilation paths to
+                    isolate sudden volumetric spikes and organized fraud rings.</li>
+            </ul>
+        </div>
+        <p style="font-size: 0.95rem; color: var(--text-muted);">
+            Log in to your Admin Dashboard to securely review granular analytics, track model consensus insights
+            natively via SHAP values, and monitor network health.
+        </p>
+    </div>
+
+    <!-- Right Column: Login Panel -->
+    <div class="panel glass-panel input-panel"
+        style="flex: 1; max-width: 450px; display: flex; flex-direction: column; justify-content: center;">
+        <h2 style="text-align: center; margin-bottom: 10px;">Admin Dashboard Login</h2>
         <p class="subtitle" style="text-align: center;">Enter your credentials to access analytics.</p>
 
         {% if error %}
@@ -23,7 +60,8 @@
                 <input type="password" id="password" name="password" placeholder="admin" required>
             </div>
 
-            <button type="submit" class="btn primary-btn" style="width: 100%; justify-content: center;">
+            <button type="submit" class="btn primary-btn"
+                style="width: 100%; justify-content: center; margin-top: 10px;">
                 <span class="btn-text">Log In</span>
             </button>
         </form>

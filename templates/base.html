@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,12 +12,26 @@
     <!-- Chart.js for visualizations (Admin) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
     <div class="app-container">
         <!-- Navigation -->
         <nav class="navbar glass-panel">
             <div class="logo">
-                <span class="gradient-text">FinGuard AI</span>
+                <svg width="28" height="28" viewBox="0 0 32 32" fill="none" class="shield-logo"
+                    style="vertical-align: middle; margin-right: 8px;">
+                    <path d="M16 29C16 29 28 23.6667 28 14.3333V6.33333L16 3L4 6.33333V14.3333C4 23.6667 16 29 16 29Z"
+                        stroke="url(#logo-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <text x="16" y="20" fill="url(#logo-grad)" font-size="14" font-weight="bold" text-anchor="middle"
+                        font-family="sans-serif">₹</text>
+                    <defs>
+                        <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#0da2bd" />
+                            <stop offset="100%" stop-color="#4fcbea" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <span class="gradient-text" style="vertical-align: middle;">FinGuard AI</span>
             </div>
             <ul class="nav-links">
                 <li><a href="/" class="{% if request.path == '/' %}active{% endif %}">User Portal</a></li>
@@ -28,7 +43,7 @@
         <main class="content">
             {% block content %}{% endblock %}
         </main>
-        
+
         <footer>
             <p>&copy; 2026 FinGuard AI. Secure, Explainable, Intelligent.</p>
         </footer>
@@ -38,4 +53,5 @@
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
+
 </html>

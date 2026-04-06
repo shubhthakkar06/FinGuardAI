@@ -1,0 +1,5 @@
+{
+  "model_type": "LSTM + Random Forest (Pure PaySim - No Faker Data)",
+  "sequence_length": 5,
+  "optimal_threshold": 0.3891
+}

@@ -7,31 +7,66 @@
     <!-- Left Column: Transaction Input -->
     <div class="panel glass-panel input-panel">
         <h2>Initiate Transaction</h2>
-        <p class="subtitle">Enter transaction details to simulate a UPI transfer.</p>
+        <p class="subtitle">Two-Account Simulation Panel</p>
 
         <form id="transaction-form" class="custom-form">
-            <div class="form-group">
-                <label for="account_id">Sender Account ID (UPI ID)</label>
-                <input type="text" id="account_id" name="account_id" placeholder="user@upi" required>
-            </div>
-
-            <div class="form-group">
-                <label for="recipient">Recipient UPI ID</label>
-                <input type="text" id="recipient" name="recipient" placeholder="merchant@upi" required>
-            </div>
-
-            <div class="form-group">
-                <label for="amount">Amount (₹)</label>
+            <!-- Row for the main amount -->
+            <div class="form-group amount-group">
+                <label for="amount">Transaction Amount (₹)</label>
                 <input type="number" id="amount" name="amount" placeholder="e.g. 5000" min="1" required>
             </div>
 
-            <div class="form-group">
-                <label for="location">Location</label>
-                <input type="text" id="location" name="location" placeholder="e.g. Mumbai, India" required>
+            <div class="accounts-grid">
+                <!-- Origin Account -->
+                <div class="account-card">
+                    <h3>Sender (Origin)</h3>
+                    <div class="form-group">
+                        <label for="nameOrig">Account ID</label>
+                        <input type="text" id="nameOrig" name="nameOrig" placeholder="Sender Name or ID" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="oldbalanceOrg">Old Balance</label>
+                        <input type="number" step="0.01" id="oldbalanceOrg" name="oldbalanceOrg"
+                            placeholder="e.g. 10000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newbalanceOrig">New Balance (Auto-calculated)</label>
+                        <input type="number" step="0.01" id="newbalanceOrig" name="newbalanceOrig" placeholder="0.00"
+                            readonly tabindex="-1" class="readonly-input">
+                    </div>
+                </div>
+
+                <!-- Destination Account -->
+                <div class="account-card">
+                    <h3>Receiver (Destination)</h3>
+                    <div class="form-group">
+                        <label for="nameDest">Account ID</label>
+                        <input type="text" id="nameDest" name="nameDest" placeholder="Receiver Name or ID" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="oldbalanceDest">Old Balance</label>
+                        <input type="number" step="0.01" id="oldbalanceDest" name="oldbalanceDest"
+                            placeholder="e.g. 2000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="newbalanceDest">New Balance (Auto-calculated)</label>
+                        <input type="number" step="0.01" id="newbalanceDest" name="newbalanceDest" placeholder="0.00"
+                            readonly tabindex="-1" class="readonly-input">
+                    </div>
+                </div>
             </div>
 
-            <button type="submit" class="btn primary-btn" id="submit-btn">
-                <span class="btn-text">Send Payment</span>
+            <div class="form-group" style="margin-top:20px;">
+                <label for="type">Transaction Type</label>
+                <select id="type" name="type" required class="custom-select">
+                    <option value="PAYMENT">PAYMENT</option>
+                    <option value="TRANSFER">TRANSFER</option>
+                    <option value="DEBIT">DEBIT</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn primary-btn" id="submit-btn" style="margin-top:20px;">
+                <span class="btn-text">Submit Transaction</span>
                 <span class="loader hidden"></span>
             </button>
         </form>

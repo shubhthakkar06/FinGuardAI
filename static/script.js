@@ -15,6 +15,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const shapList = document.getElementById('shap-list');
     const txActions = document.getElementById('tx-actions');
 
+    // Auto-calculate logic
+    const amtInput = document.getElementById('amount');
+    const oldOrgInput = document.getElementById('oldbalanceOrg');
+    const newOrgInput = document.getElementById('newbalanceOrig');
+    const oldDestInput = document.getElementById('oldbalanceDest');
+    const newDestInput = document.getElementById('newbalanceDest');
+
+    function updateBalances() {
+        if (!newOrgInput || !newDestInput) return;
+        const amt = parseFloat(amtInput?.value) || 0;
+        const oldOrg = parseFloat(oldOrgInput?.value) || 0;
+        const oldDest = parseFloat(oldDestInput?.value) || 0;
+
+        newOrgInput.value = Math.max(0, oldOrg - amt).toFixed(2);
+        newDestInput.value = (oldDest + amt).toFixed(2);
+    }
+
+    if (amtInput) amtInput.addEventListener('input', updateBalances);
+    if (oldOrgInput) oldOrgInput.addEventListener('input', updateBalances);
+    if (oldDestInput) oldDestInput.addEventListener('input', updateBalances);
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -35,9 +56,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modelList) modelList.innerHTML = '';
         txActions.classList.add('hidden');
 
-        // Capture data
+        // Capture data & ensure auto-calculated fields are in
+        updateBalances();
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
+        // For disabled/readonly inputs missing from formData in some browsers
+        if (newOrgInput) data.newbalanceOrig = newOrgInput.value;
+        if (newDestInput) data.newbalanceDest = newDestInput.value;
 
         try {
             const response = await fetch('/api/transaction', {
@@ -131,16 +156,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Populate SHAP values
-        prediction.shap_values.forEach(item => {
+        prediction.shap_values.forEach((item, index) => {
             const li = document.createElement('li');
+            li.style.animationDelay = `${index * 0.1}s`;
+            li.className = 'shap-item';
+
+            // Highlight top impacts
+            const isTop = index < 2;
+            const fillClass = isTop ? 'shap-fill-primary' : 'shap-fill-secondary';
+
             li.innerHTML = `
-                <span>${item.feature}</span>
-                <div class="shap-value-bar">
-                    <div class="shap-value-fill" style="width: ${item.importance}%"></div>
+                <div class="shap-header">
+                    <span class="shap-feature">${item.feature}</span>
+                    <span class="shap-perc ${isTop ? 'highlight' : ''}">${item.importance}%</span>
                 </div>
-                <span>${item.importance}%</span>
+                <div class="shap-bar-container">
+                    <div class="shap-bar-fill ${fillClass}" style="width: 0%;" data-target="${item.importance}%"></div>
+                </div>
             `;
             shapList.appendChild(li);
+
+            // Trigger animation
+            setTimeout(() => {
+                const fill = li.querySelector('.shap-bar-fill');
+                if (fill) fill.style.width = fill.getAttribute('data-target');
+            }, 50);
         });
     }
 

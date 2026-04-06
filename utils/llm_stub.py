@@ -5,22 +5,31 @@ load_dotenv()
 
 def generate_context_explanation(transaction_data, prediction_data):
     """
-    Mock OpenAI GPT API call.
-    In a real scenario, this would use the OPENAI_API_KEY from .env
-    and call the OpenAI API with prompt engineering.
+    Mock OpenAI GPT API call generation based on ensemble evaluation.
     """
-    # api_key = os.getenv("OPENAI_API_KEY") 
-    
     is_fraud = prediction_data.get("is_fraud")
     prob = prediction_data.get("probability")
+    
     amount = transaction_data.get("amount", "0")
-    recipient = transaction_data.get("recipient", "Unknown")
+    sender = transaction_data.get("nameOrig", "Sender")
+    receiver = transaction_data.get("nameDest", "Receiver")
     
-    top_feature = prediction_data.get("shap_values", [{}])[0].get("feature", "Unknown")
+    ensemble_breakdown = ", ".join([f"{m['name']} ({m['prob']}%)" for m in prediction_data.get("model_breakdown", [])])
     
+    shap_vals = prediction_data.get("shap_values", [])
+    top_feature = shap_vals[0].get("feature", "Unknown") if shap_vals else "Unknown"
+    second_feature = shap_vals[1].get("feature", "Unknown") if len(shap_vals) > 1 else ""
+    
+    explanation = f"Analyzing transaction of ₹{amount} from {sender} to {receiver}. "
+    explanation += f"Ensemble Consensus: {prob}% risk. Models evaluated: {ensemble_breakdown}. "
+    
+    reason = f"Primary driving features were '{top_feature}'"
+    if second_feature:
+        reason += f" and '{second_feature}'"
+        
     if is_fraud:
-        return f"ALERT: High risk of fraud ({prob}%). This transaction of ₹{amount} to {recipient} is suspicious primarily due to '{top_feature}'. We recommend pausing this transaction and verifying with the recipient immediately."
+        return f"🚨 ALERT: High Risk Fraud Detected. {explanation} {reason}. This transaction exhibits highly suspicious patterns across the ensemble of models. The balances and amount suggest anomalous velocity or structuring. Recommendation: REJECT OR HOLD."
     elif prob > 30:
-        return f"WARNING: Moderate risk ({prob}%). This transaction of ₹{amount} is slightly anomalous based on '{top_feature}'. Please review carefully before proceeding."
+        return f"⚠️ WARNING: Elevated Risk Found. {explanation} {reason}. The transaction presents some deviations from normal baselines according to certain models. Recommendation: MANUAL REVIEW."
     else:
-        return f"SUCCESS: Normal transaction. The transfer of ₹{amount} to {recipient} fits your typical spending patterns. No anomalous features detected."
+        return f"✅ SUCCESS: Transaction Verified. {explanation} {reason}. The ensemble consensus indicates this is a normal transaction within expected thresholds. Recommendation: APPROVE."

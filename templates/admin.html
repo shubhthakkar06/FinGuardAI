@@ -34,7 +34,7 @@
         </div>
         <div class="kpi-card glass-panel">
             <div class="kpi-title">Model Accuracy (F1)</div>
-            <div class="kpi-value gradient-text">96.8%</div>
+            <div class="kpi-value gradient-text">87.1%</div>
             <div class="kpi-trend neutral">--</div>
         </div>
     </div>
@@ -43,7 +43,7 @@
     <div class="charts-grid">
         <!-- Main Line Chart -->
         <div class="chart-panel glass-panel span-2">
-            <h3>Transaction Volume & Fraud Spikes (7 Days)</h3>
+            <h3>Transaction Risk Timeline (Last 20 Predictions)</h3>
             <div class="chart-container">
                 <canvas id="volumeChart"></canvas>
             </div>
@@ -55,6 +55,66 @@
             <div class="chart-container">
                 <canvas id="featureChart"></canvas>
             </div>
+        </div>
+    </div>
+
+    <!-- Model Performance Benchmarks (New Section) -->
+    <div class="panel glass-panel" style="margin-top: 2rem;">
+        <h3>Model Performance Benchmarks (Test Set)</h3>
+        <p class="subtitle" style="margin-bottom: 1.5rem;">Detailed evaluation metrics across the integrated ensemble
+            components.</p>
+        <div style="overflow-x:auto;">
+            <table class="metrics-table" style="width: 100%; text-align: left; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                        <th style="padding: 12px;">Model Component</th>
+                        <th style="padding: 12px;">Accuracy</th>
+                        <th style="padding: 12px;">Precision</th>
+                        <th style="padding: 12px;">Recall</th>
+                        <th style="padding: 12px;">F1-Score</th>
+                        <th style="padding: 12px;">ROC-AUC</th>
+                        <th style="padding: 12px;">PR-AUC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 12px; font-weight: 500;">LSTM + RF Hybrid</td>
+                        <td style="padding: 12px;">99.86%</td>
+                        <td style="padding: 12px;">87.09%</td>
+                        <td style="padding: 12px;">78.77%</td>
+                        <td style="padding: 12px; color: var(--primary-color);">82.72%</td>
+                        <td style="padding: 12px;">99.15%</td>
+                        <td style="padding: 12px;">86.17%</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 12px; font-weight: 500;">TCN</td>
+                        <td style="padding: 12px;">99.77%</td>
+                        <td style="padding: 12px;">93.15%</td>
+                        <td style="padding: 12px;">81.87%</td>
+                        <td style="padding: 12px; color: var(--primary-color);">87.14%</td>
+                        <td style="padding: 12px;">--</td>
+                        <td style="padding: 12px;">--</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 12px; font-weight: 500;">TCN + BiLSTM + Attention</td>
+                        <td style="padding: 12px;">99.37%</td>
+                        <td style="padding: 12px;">62.95%</td>
+                        <td style="padding: 12px;">85.62%</td>
+                        <td style="padding: 12px; color: var(--primary-color);">72.55%</td>
+                        <td style="padding: 12px;">98.86%</td>
+                        <td style="padding: 12px;">86.37%</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 12px; font-weight: 500;">CNN + BiLSTM</td>
+                        <td style="padding: 12px;">99.84%</td>
+                        <td style="padding: 12px;">85.67%</td>
+                        <td style="padding: 12px;">75.65%</td>
+                        <td style="padding: 12px; color: var(--primary-color);">80.35%</td>
+                        <td style="padding: 12px;">99.75%</td>
+                        <td style="padding: 12px;">--</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -105,67 +165,81 @@
     // Mock Chart.js implementation for Admin Dashboard
     document.addEventListener("DOMContentLoaded", function () {
         // Line Chart
-        const ctxVolume = document.getElementById('volumeChart').getContext('2d');
-        new Chart(ctxVolume, {
-            type: 'line',
-            data: {
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                datasets: [
-                    {
-                        label: 'Total Volume',
-                        data: [3200, 3100, 3500, 3800, 4100, 3700, 3200],
-                        borderColor: '#0ea5e9', // Blueish
-                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    },
-                    {
-                        label: 'Fraud Flagged',
-                        data: [150, 140, 180, 220, 300, 250, 130],
-                        borderColor: '#f43f5e', // Redish
-                        borderDash: [5, 5],
-                        backgroundColor: 'transparent',
-                        tension: 0.4
-                    }
-                ]
+        // Risk Timeline Chart (Replacing static volume chart)
+        const ctxTimeline = document.getElementById('volumeChart').getContext('2d');
+        const timelineLabels = {{ timeline_labels| tojson | safe
+    }};
+    const timelineData = {{ timeline_data| tojson | safe }};
+
+    const timelineDisplayLabels = timelineLabels.length > 0 ? timelineLabels : ['No Data'];
+    const timelineDisplayData = timelineData.length > 0 ? timelineData : [0];
+
+    new Chart(ctxTimeline, {
+        type: 'bar',
+        data: {
+            labels: timelineDisplayLabels,
+            datasets: [{
+                label: 'Fraud Probability (%)',
+                data: timelineDisplayData,
+                backgroundColor: timelineDisplayData.map(v => v > 50 ? '#f43f5e' : '#0ea5e9'),
+                borderRadius: 4,
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { labels: { color: '#e2e8f0' } }
+            scales: {
+                x: {
+                    ticks: { color: '#94a3b8', maxRotation: 45, minRotation: 45 },
+                    grid: { display: false }
                 },
-                scales: {
-                    x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
-                    y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: { color: '#94a3b8' },
+                    grid: { color: '#334155' }
                 }
             }
-        });
+        }
+    });
 
-        // Doughnut Chart (Feature Importance)
-        const ctxFeature = document.getElementById('featureChart').getContext('2d');
-        new Chart(ctxFeature, {
-            type: 'doughnut',
-            data: {
-                labels: ['Amount', 'Location', 'Velocity', 'Time of Day', 'New Payee'],
-                datasets: [{
-                    data: [35, 25, 20, 10, 10],
-                    backgroundColor: [
-                        '#f43f5e', '#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b'
-                    ],
-                    borderWidth: 0,
-                    hoverOffset: 4
-                }]
+    // Doughnut Chart (Feature Importance)
+    const ctxFeature = document.getElementById('featureChart').getContext('2d');
+    const shapLabels = {{ shap_labels| tojson | safe
+    }};
+    const shapData = {{ shap_data| tojson | safe }};
+
+    // Fallback if no data
+    const shapDisplayLabels = shapLabels.length > 0 ? shapLabels : ['No Data Yet'];
+    const shapDisplayData = shapData.length > 0 ? shapData : [100];
+    const displayColors = shapLabels.length > 0 ? [
+        '#f43f5e', '#8b5cf6', '#0ea5e9', '#10b981', '#f59e0b', '#64748b'
+    ] : ['#334155'];
+
+    new Chart(ctxFeature, {
+        type: 'doughnut',
+        data: {
+            labels: shapDisplayLabels,
+            datasets: [{
+                data: shapDisplayData,
+                backgroundColor: displayColors,
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#e2e8f0', padding: 20 } }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom', labels: { color: '#e2e8f0', padding: 20 } }
-                },
-                cutout: '70%'
-            }
-        });
+            cutout: '70%'
+        }
+    });
     });
 </script>
 {% endblock %}
