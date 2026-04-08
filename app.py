@@ -1,11 +1,12 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-from utils.ml_stub import get_fraud_prediction
+from utils.ml_stub import get_fraud_prediction, ENSEMBLE_MODELS
 from utils.llm_stub import generate_context_explanation
 import random
 import os
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # For session management
+# Use a stable SECRET_KEY from environment in production; fall back to a random key for local dev
+app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(24)
 
 # Global in-memory list to track transactions during app runtime
 transactions = []
@@ -13,7 +14,20 @@ transactions = []
 @app.route('/')
 def user_dashboard():
     """Renders the main User/Customer interface for transaction requests."""
-    return render_template('index.html')
+    # Pass number of loaded models to the template so the UI can reflect actual ensemble size
+    models_count = len(ENSEMBLE_MODELS) if ENSEMBLE_MODELS is not None else 0
+    model_names = [m.get('name') for m in ENSEMBLE_MODELS] if ENSEMBLE_MODELS else []
+    return render_template('index.html', models_count=models_count, model_names=model_names)
+
+
+@app.route('/api/models')
+def api_models():
+    """Return a small JSON payload with loaded ensemble model names and count for debugging."""
+    models = ENSEMBLE_MODELS or []
+    return jsonify({
+        'count': len(models),
+        'models': [m.get('name') for m in models]
+    })
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -94,7 +108,31 @@ def handle_transaction():
     
     if not data:
         return jsonify({"error": "No data provided"}), 400
-        
+    # Basic numeric validation for amount
+    amount_raw = data.get("amount")
+    try:
+        amount = float(amount_raw)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Invalid amount value"}), 400
+
+    # Check sender's available balance if provided (common field: oldbalanceOrg)
+    old_balance_raw = data.get("oldbalanceOrg")
+    old_balance = None
+    if old_balance_raw is not None:
+        try:
+            old_balance = float(old_balance_raw)
+        except (TypeError, ValueError):
+            old_balance = None
+
+    # If we have a sender balance, enforce insufficient funds check
+    if old_balance is not None and amount > old_balance:
+        return jsonify({
+            "error": "Insufficient funds",
+            "message": "Transfer amount exceeds available balance",
+            "available_balance": old_balance,
+            "requested_amount": amount
+        }), 400
+
     # 1. Get ML Prediction and Explainability (SHAP)
     prediction = get_fraud_prediction(data)
     
@@ -103,18 +141,18 @@ def handle_transaction():
     
     # Simulate a transaction ID
     tx_id = f"TXN{random.randint(1000000, 9999999)}"
-    
+
     response_data = {
         "transaction_id": tx_id,
-        "amount": data.get("amount"),
+        "amount": amount,
         "recipient": data.get("nameDest", "Unknown"),
         "prediction": prediction,
         "explanation": explanation
     }
-    
+
     # Store transaction for admin dashboard
     transactions.append(response_data)
-    
+
     return jsonify(response_data)
 
 if __name__ == '__main__':

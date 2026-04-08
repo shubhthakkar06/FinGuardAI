@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive TCN Visualizer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a; /* Dark tech theme */
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+        h2 { margin-bottom: 5px; color: #38bdf8; }
+        p { margin-top: 0; margin-bottom: 20px; color: #94a3b8; }
+        .dashboard {
+            background-color: #1e293b;
+            padding: 15px 25px;
+            border-radius: 8px;
+            border: 2px solid #334155;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        label { font-size: 14px; font-weight: bold; color: #cbd5e1; }
+        canvas {
+            background-color: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            cursor: default;
+        }
+        #infoPanel {
+            margin-top: 20px;
+            background-color: #1e293b;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #fde047;
+            width: 760px;
+            font-size: 16px;
+            text-align: center;
+        }
+        .highlight-text { color: #fde047; font-weight: bold; font-size: 18px; }
+    </style>
+</head>
+<body>
+
+    <h2>TCN Architecture Simulator</h2>
+    <p>Adjust the parameters and hover over the highest layer to view the Receptive Field.</p>
+
+    <div class="dashboard">
+        <div class="control-group">
+            <label for="layersSlider">Hidden Layers: <span id="layersVal">3</span></label>
+            <input type="range" id="layersSlider" min="1" max="4" value="3">
+        </div>
+        <div class="control-group">
+            <label for="kernelSlider">Kernel Size: <span id="kernelVal">2</span></label>
+            <input type="range" id="kernelSlider" min="2" max="3" value="2">
+        </div>
+        <div class="control-group" style="flex-direction: row; align-items: center; gap: 10px;">
+            <label for="dilationToggle">Exponential Dilation:</label>
+            <input type="checkbox" id="dilationToggle" checked style="width: 18px; height: 18px;">
+        </div>
+    </div>
+
+    <canvas id="tcnCanvas" width="850" height="450"></canvas>
+
+    <div id="infoPanel">
+        Receptive Field Size: <span id="rfSize" class="highlight-text">0</span> past transactions currently being analyzed.
+    </div>
+
+    <script>
+        const canvas = document.getElementById('tcnCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI Elements
+        const layersSlider = document.getElementById('layersSlider');
+        const kernelSlider = document.getElementById('kernelSlider');
+        const dilationToggle = document.getElementById('dilationToggle');
+        const layersVal = document.getElementById('layersVal');
+        const kernelVal = document.getElementById('kernelVal');
+        const rfSizeText = document.getElementById('rfSize');
+
+        const SEQ_LEN = 20; // 20 transaction time steps
+        const NODE_RADIUS = 6;
+        
+        let numLayers = parseInt(layersSlider.value);
+        let kernelSize = parseInt(kernelSlider.value);
+        let useDilation = dilationToggle.checked;
+
+        let nodes = [];
+        let edges = [];
+        let hoveredNode = null;
+        let activeNodes = new Set();
+        let activeEdges = new Set();
+
+        // Listeners for controls
+        layersSlider.addEventListener('input', (e) => {
+            numLayers = parseInt(e.target.value);
+            layersVal.innerText = numLayers;
+            updateNetwork();
+        });
+        kernelSlider.addEventListener('input', (e) => {
+            kernelSize = parseInt(e.target.value);
+            kernelVal.innerText = kernelSize;
+            updateNetwork();
+        });
+        dilationToggle.addEventListener('change', (e) => {
+            useDilation = e.target.checked;
+            updateNetwork();
+        });
+
+        function updateNetwork() {
+            nodes = [];
+            edges = [];
+            activeNodes.clear();
+            activeEdges.clear();
+            hoveredNode = null;
+            rfSizeText.innerText = "0";
+
+            const startX = 40;
+            const endX = canvas.width - 40;
+            const startY = canvas.height - 40;
+            const endY = 40;
+            
+            const spacingX = (endX - startX) / (SEQ_LEN - 1);
+            // Total rows = numLayers + 1 (Input is layer 0)
+            const spacingY = (startY - endY) / Math.max(numLayers, 1);
+
+            // 1. Create Nodes
+            for (let l = 0; l <= numLayers; l++) {
+                for (let t = 0; t < SEQ_LEN; t++) {
+                    nodes.push({
+                        id: `L${l}T${t}`,
+                        layer: l,
+                        time: t,
+                        x: startX + t * spacingX,
+                        y: startY - l * spacingY,
+                        children: [] 
+                    });
+                }
+            }
+
+            // 2. Create Causal Edges
+            for (let l = 1; l <= numLayers; l++) {
+                // Exponential dilation: 1, 2, 4, 8... OR flat 1 if turned off
+                let dilation = useDilation ? Math.pow(2, l - 1) : 1; 
+                
+                for (let t = 0; t < SEQ_LEN; t++) {
+                    let targetNode = nodes.find(n => n.layer === l && n.time === t);
+                    
+                    // Connect to K past steps based on dilation
+                    for (let k = 0; k < kernelSize; k++) {
+                        let pastTime = t - (k * dilation);
+                        
+                        // Causal constraint: Don't look past Time = 0
+                        if (pastTime >= 0) {
+                            let sourceNode = nodes.find(n => n.layer === l - 1 && n.time === pastTime);
+                            if (sourceNode) {
+                                targetNode.children.push(sourceNode);
+                                edges.push({ from: sourceNode, to: targetNode, id: `E_${targetNode.id}_${sourceNode.id}` });
+                            }
+                        }
+                    }
+                }
+            }
+            drawScene();
+        }
+
+        // DFS to find Receptive Field
+        function calculateReceptiveField(startNode) {
+            activeNodes.clear();
+            activeEdges.clear();
+            let inputNodesReached = new Set();
+
+            function traverse(node) {
+                if (!node) return;
+                activeNodes.add(node.id);
+                if (node.layer === 0) inputNodesReached.add(node.id);
+
+                node.children.forEach(child => {
+                    activeEdges.add(`E_${node.id}_${child.id}`);
+                    traverse(child);
+                });
+            }
+
+            traverse(startNode);
+            rfSizeText.innerText = inputNodesReached.size;
+        }
+
+        function drawScene() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Edges
+            edges.forEach(edge => {
+                let isActive = activeEdges.has(edge.id);
+                ctx.beginPath();
+                ctx.moveTo(edge.from.x, edge.from.y);
+                ctx.lineTo(edge.to.x, edge.to.y);
+                
+                if (hoveredNode) {
+                    ctx.strokeStyle = isActive ? '#38bdf8' : 'rgba(51, 65, 85, 0.15)';
+                    ctx.lineWidth = isActive ? 2.5 : 1;
+                } else {
+                    ctx.strokeStyle = '#475569';
+                    ctx.lineWidth = 1;
+                }
+                ctx.stroke();
+            });
+
+            // Draw Nodes
+            nodes.forEach(node => {
+                let isActive = activeNodes.has(node.id);
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, NODE_RADIUS, 0, Math.PI * 2);
+                
+                if (hoveredNode) {
+                    if (node.id === hoveredNode.id) {
+                        ctx.fillStyle = '#fde047'; // Highlighted start node
+                        ctx.strokeStyle = '#fef08a';
+                    } else if (isActive) {
+                        ctx.fillStyle = node.layer === 0 ? '#10b981' : '#0ea5e9'; // Green for input layer hits
+                        ctx.strokeStyle = '#38bdf8';
+                    } else {
+                        ctx.fillStyle = '#1e293b'; 
+                        ctx.strokeStyle = '#334155';
+                    }
+                } else {
+                    // Default state
+                    ctx.fillStyle = node.layer === 0 ? '#0f766e' : '#334155';
+                    ctx.strokeStyle = node.layer === 0 ? '#14b8a6' : '#64748b';
+                }
+                
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            });
+            
+            // Labels
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '12px sans-serif';
+            ctx.fillText("Oldest Transaction", 40, canvas.height - 15);
+            ctx.textAlign = "right";
+            ctx.fillText("Newest Transaction (t=0)", canvas.width - 40, canvas.height - 15);
+            ctx.textAlign = "left";
+        }
+
+        // Mouse interaction
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            let found = null;
+            // Only trigger hover on nodes that have children (Layer > 0)
+            let hoverableNodes = nodes.filter(n => n.layer > 0); 
+
+            for (let node of hoverableNodes) {
+                const dist = Math.hypot(node.x - mouseX, node.y - mouseY);
+                if (dist < 12) {
+                    found = node;
+                    break;
+                }
+            }
+
+            if (found !== hoveredNode) {
+                hoveredNode = found;
+                if (hoveredNode) {
+                    calculateReceptiveField(hoveredNode);
+                    canvas.style.cursor = 'pointer';
+                } else {
+                    activeNodes.clear();
+                    activeEdges.clear();
+                    rfSizeText.innerText = "0";
+                    canvas.style.cursor = 'default';
+                }
+                drawScene();
+            }
+        });
+
+        // Initialize
+        updateNetwork();
+    </script>
+</body>
+</html>

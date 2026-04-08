@@ -206,3 +206,38 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Local model artifacts (large) - do NOT commit heavy model binaries
+models/
+models/*.pt
+models/*.pt.zip
+models/*.keras
+models/**/*.pt
+models/**/*.keras
+
+# Virtualenvs and Python env folders
+tfenv/
+.venv/
+venv/
+
+# Environment files
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Compiled Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# model checkpoints / weights
+*.h5
+*.ckpt
+*.ckpt.index
+*.index

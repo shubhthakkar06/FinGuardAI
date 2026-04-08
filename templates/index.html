@@ -73,7 +73,10 @@
 
         <div id="left-result-panel" class="hidden" style="margin-top: 30px;">
             <div class="analysis-section model-breakdown" style="border-bottom: none;">
-                <h3>Model Consensus (4 Models)</h3>
+                <h3>Model Consensus ({{ models_count or 0 }} Models)</h3>
+                {% if model_names %}
+                <p class="subtitle text-small">Loaded: {{ model_names | join(', ') }}</p>
+                {% endif %}
                 <ul class="shap-list" id="model-list">
                     <!-- Model values injected here -->
                 </ul>

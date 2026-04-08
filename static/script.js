@@ -73,9 +73,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(data)
             });
 
-            if (!response.ok) throw new Error('API request failed');
+            // Try to read JSON body even on non-OK to surface server errors
+            let body = null;
+            try {
+                body = await response.json();
+            } catch (e) {
+                body = null;
+            }
 
-            const result = await response.json();
+            if (!response.ok) {
+                // Prefer server-provided message when available
+                const serverMsg = body && (body.message || body.error)
+                    ? body.message || body.error
+                    : 'A system error occurred while processing your transaction.';
+
+                // Debug: print server body so we can see exact shape if mismatch occurs
+                console.debug('Server error body:', body);
+
+                // If it's an insufficient funds error, make it user-friendly and include amounts
+                if (body && body.error && body.error.toLowerCase().includes('insufficient')) {
+                    let friendly = 'Transfer amount should be less than the available balance.';
+                    if (body.available_balance !== undefined && body.requested_amount !== undefined) {
+                        friendly += `\nAvailable: ${body.available_balance} — Requested: ${body.requested_amount}`;
+                    }
+                    llmMessage.textContent = friendly;
+                } else {
+                    // Fallback: show server message (or the raw JSON if message missing)
+                    llmMessage.textContent = serverMsg;
+                    if (!body || !(body.message || body.error)) {
+                        // show raw JSON for debugging
+                        llmMessage.textContent = 'Server response: ' + JSON.stringify(body || {});
+                    }
+                }
+
+                statusBadge.textContent = 'Error';
+                statusBadge.className = 'status-badge danger';
+
+                submitBtn.disabled = false;
+                btnText.textContent = 'Retry Payment';
+                loader.classList.add('hidden');
+                return; // stop further processing
+            }
+
+            const result = body; // successful JSON body
 
             // Artificial delay for effect (Simulating complex ML + LLM latency)
             setTimeout(() => {
